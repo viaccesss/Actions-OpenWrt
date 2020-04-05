@@ -30,6 +30,7 @@ env:
   SSH_ACTIONS: false
   UPLOAD_BIN_DIR: false
   UPLOAD_FIRMWARE: true
+  UPLOAD_COWTRANSFER: true
   TZ: Asia/Shanghai
 
 jobs:
@@ -117,6 +118,13 @@ jobs:
     
     - name: 上载固件目录
       uses: actions/upload-artifact@master
+      if: steps.organize.outputs.status == 'success' && !cancelled()
       with:
-         name: OpenWrt firmware
-         path: ./bin/targets/
+        name: OpenWrt_firmware
+        path: ${{ env.FIRMWARE }}
+
+    - name: 将固件上载到cowtransfer
+      if: env.UPLOAD_COWTRANSFER == 'true' && !cancelled()
+      run: |
+        curl -sL https://git.io/cowtransfer | sh
+        ./cowtransfer-uploader -b 2621440 -s -p 99 -t 3 --hash ${FIRMWARE}
