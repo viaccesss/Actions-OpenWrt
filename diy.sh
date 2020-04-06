@@ -5,7 +5,7 @@
 # Author: Discuzamoy
 #=================================================
 # Modify default IP
-# rm -rf package/litte/luci-app-smartdns
+# rm -rf package/openwrt-package/luci-app-smartdns
 # git clone https://github.com/kenzok8/openwrt-packages.git package/openwrt-package
 # rm -rf package/openwrt-package/luci-app-ssr-plus
 # ./scripts/feeds update -a
