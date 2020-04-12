@@ -13,4 +13,4 @@
 sed -i 's/root::0:0:99999:7:::/root:$1$s0nqgFtf$90M3V1HtmSsyb.gNF53Xd1:18307:0:99999:7:::/g' package/base-files/files/etc/shadow
 sed -i 's/OpenWrt/Discuzamoy/g' package/base-files/files/bin/config_generate
 sed -i 's/192.168.1.1/192.168.99.1/g' package/base-files/files/bin/config_generate
-# sed -i 's/luci-theme-bootstrap/luci-theme-material/g' ./feeds/luci/collections/luci/Makefile
+# sed -i 's/luci-theme-bootstrap/luci-theme-material/g' feeds/luci/collections/luci/Makefile
