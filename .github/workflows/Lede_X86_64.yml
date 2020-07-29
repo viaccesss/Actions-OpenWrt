@@ -68,21 +68,24 @@ jobs:
         sudo -E apt-get -qq clean
     
     - name: 克隆源代码
-      run: git clone --depth 1 $REPO_URL -b $REPO_BRANCH openwrt
+      working-directory: /workdir
+      run: |
+        df -hT $PWD
+        git clone --depth 1 $REPO_URL -b $REPO_BRANCH openwrt
+        ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
 
     - name: 更新安装提要
       run: cd openwrt && ./scripts/feeds update -a && ./scripts/feeds install -a && ./scripts/feeds install -a
 
     - name: 加载自定义配置
       run: |
-        [ -e files ] && mv files openwrt/files
-        [ -e $CONFIG_FILE ] && mv $CONFIG_FILE openwrt/.config
+        [ -e $FEEDS_CONF ] && mv $FEEDS_CONF openwrt/feeds.conf.default
         chmod +x $DIY_SH
         cd openwrt
-        ../$DIY_SH
+        $GITHUB_WORKSPACE/$DIY_SH
     
     - name: SSH连接到操作
-      uses: P3TERX/debugger-action@master
+      uses: P3TERX/debugger-action@main
       if: env.SSH_ACTIONS == 'true' || contains(github.event.action, 'ssh')
 
     - name: 下载dl文件包
@@ -99,14 +102,17 @@ jobs:
       run: |
         cd openwrt
         echo -e "$(nproc) thread compile"
-        make -j$(nproc) || make -j1 V=s
+        make -j$(nproc) || make -j1 || make -j1 V=s
         echo "::set-output name=status::success"
+        grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/' > DEVICE_NAME
+        [ -s DEVICE_NAME ] && echo "::set-env name=DEVICE_NAME::_$(cat DEVICE_NAME)"
+        echo "::set-env name=FILE_DATE::_$(date +"%Y%m%d%H%M")"
     
     - name: 上传bin目录
-      uses: actions/upload-artifact@master
+      uses: actions/upload-artifact@main
       if: steps.compile.outputs.status == 'success' && env.UPLOAD_BIN_DIR == 'true'
       with:
-        name: OpenWrt_bin
+        name: OpenWrt_bin${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
         path: openwrt/bin
 
     - name: 组织文件
@@ -119,17 +125,17 @@ jobs:
         echo "::set-output name=status::success"
     
     - name: 上传固件目录
-      uses: actions/upload-artifact@master
+      uses: actions/upload-artifact@main
       if: steps.organize.outputs.status == 'success' && !cancelled()
       with:
-        name: OpenWrt_firmware
+        name: OpenWrt_firmware${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
         path: ${{ env.FIRMWARE }}
 
     - name: 将固件上传到奶牛快傳
       if: steps.organize.outputs.status == 'success' && env.UPLOAD_COWTRANSFER == 'true' && !cancelled()
       run: |
         curl -fsSL git.io/file-transfer | sh
-        ./transfer cow --block 2621440 -s -p 99 -t 3 --hash --no-progress ${FIRMWARE} 2>&1 | tee cowtransfer.log
+        ./transfer cow --block 2621440 -s -p 64 --no-progress ${FIRMWARE} 2>&1 | tee cowtransfer.log
         echo "::warning file=cowtransfer.com::$(cat cowtransfer.log | grep https)"
     
     - name: 将固件上传到 WeTransfer
